@@ -18,7 +18,9 @@ class Visualizer:
 
 
     def fill_race_info(self):
-        race_url = "http://ergast.com/api/f1/{season}/{round}.json".format(season=self.season, round=self.round)
+        race_url = "http://ergast.com/api/f1/{season}/{round}.json".format(
+            season=self.season, round=self.round
+        )
         race_response = requests.get(race_url)
         race_dict = json.loads(race_response.text)
         race_table = race_dict['MRData']['RaceTable']['Races'][0]

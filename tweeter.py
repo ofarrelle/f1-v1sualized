@@ -25,5 +25,9 @@ class Tweeter:
             media_upload_response = self.api.media_upload(image_path)
             media_ids.append(media_upload_response.media_id)
         
-        tweet_response = self.client.create_tweet(text=post_content['text'], media_ids=media_ids)
+        if len(media_ids) == 0:
+            tweet_response = self.client.create_tweet(text=post_content['text'])
+        else:
+            tweet_response = self.client.create_tweet(text=post_content['text'], media_ids=media_ids)
+
         return tweet_response

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_prettify import *
 import time
 
-from visualizer import Visualizer
+from visualizers.visualizer import Visualizer
 
 class SeasonVisualizer(Visualizer):
     points_table = None
@@ -19,6 +19,8 @@ class SeasonVisualizer(Visualizer):
         image_paths = [
             self.tweet_image_wdc_standings()
         ]
+        if self.round > 1:
+            image_paths.append(self.tweet_image_wdc_progression)
         return {
             'text':text, 
             'image_paths':image_paths
@@ -26,26 +28,17 @@ class SeasonVisualizer(Visualizer):
 
 
     def tweet_text(self):
-        season_url = "http://ergast.com/api/f1/{season}.json".format(season=self.season)
-        season_response = requests.get(season_url)
-        season_dict = json.loads(season_response.text)
-        num_races = int(season_dict['MRData']['total'])
-
-        tweet_text = f"Following today's {self.name}, we are {float(self.round) / num_races:.0%} of the way though the {self.season} season."
-        if num_races - self.round != 0:
-            tweet_text += f"\nThere are {num_races - self.round} races remaining."
-
+        tweet_text = f"Here's how the season has shaped up after the {self.name}."
         return tweet_text
 
 
     def tweet_image_wdc_standings(self):
         current_points = self.points_table[self.points_table['round'] == self.round][['name','points']].copy()
+        current_points = current_points.sort_values('points', ascending=False).iloc[:12]
 
-        fig, ax = plt.subplots(figsize=(12,4))
+        fig, ax = plt.subplots(figsize=(12,8))
         plt.xticks(rotation=45)
-               
-        diff_points = None
-        diff_points_container = None
+
         if self.round > 1:
             previous_points = self.points_table[self.points_table['round'] == self.round-1][['name','points']].copy()
             diff_points = current_points.merge(previous_points, on='name', how='left')
@@ -81,10 +74,41 @@ class SeasonVisualizer(Visualizer):
             )
 
         ax.set_yticks([])
-        ax.set_title(f"Driver's Championship Points after {self.name}")
+        ax.set_title(f"Driver's Championship Points after {self.name}", figsize=16)
 
         fname = f"tweet_media/{self.season}_{self.round}_wdc_standings.png"
-        plt.savefig(fname, transparent=False, bbox_inches='tight')
+        fig.savefig(fname, transparent=False, bbox_inches='tight')
+        return fname
+
+
+    def tweet_image_wdc_progression(self):
+        df = self.points_table.copy()
+
+        round_max = df.groupby('round')['points'].max().to_dict()
+        df['points_norm'] = df.apply(lambda row: row['points'] / round_max[row['round']], axis=1)
+        df['name_hash'] = df['name'].apply(lambda n: hash(n) % 2)
+
+        fig, ax = plt.subplots(figsize=(12,8))
+        sns.lineplot(
+            data=df, x='round', y='points_norm', 
+            hue='name', style='name_hash',
+            legend=False,
+            ax=ax
+        )
+        for _,row in df[df['round'] == df['round'].max()].iterrows():
+            ax.text(
+                x = 23, 
+                y =  row['points_norm'], 
+                s=row['name'], 
+                fontsize=14
+            )
+
+        ax.set_title("Driver's Points Progression (as a proportion of the leader)", fontsize=16)
+        ax.set_xlabel('Round')
+        ax.set_ylabel('Points (proportion of leader)')
+        
+        fname = f"tweet_media/{self.season}_{self.round}_wdc_progression.png"
+        fig.savefig(fname, transparent=False, bbox_inches='tight')
         return fname
 
 
@@ -93,7 +117,9 @@ class SeasonVisualizer(Visualizer):
         for i in range(self.round):
             time.sleep(0.5)
             round = i+1
-            standings_url = "http://ergast.com/api/f1/2021/{round}/driverStandings.json".format(round=round)
+            standings_url = "http://ergast.com/api/f1/{season}/{round}/driverStandings.json".format(
+                season=self.season, round=round
+            )
             standings_response = requests.get(standings_url)
             standings_dict = json.loads(standings_response.text)
             standings_results = standings_dict['MRData']['StandingsTable']['StandingsLists'][0]['DriverStandings']

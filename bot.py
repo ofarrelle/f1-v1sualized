@@ -1,8 +1,11 @@
 import tinydb
 import requests
 import json
-from season_visualizer import SeasonVisualizer
+
 from tweeter import Tweeter
+from visualizers.season import SeasonVisualizer
+from visualizers.season_completion import SeasonCompletionVisualizer
+from visualizers.laps import LapTimeVisualizer
 
 DEBUG_MODE = True
 
@@ -22,20 +25,23 @@ matches = db.search(
     (Races.round == round) 
 )
 
-if len(matches) != 0:
+if DEBUG_MODE==False and len(matches) != 0:
     print('No new races')
     exit()
 
-print('Today is race day!')
-db.insert({ 'season':season, 'round':round })
+print('New race found!')
+if not DEBUG_MODE:
+    db.insert({ 'season':season, 'round':round })
 
 visualizers = [
-    SeasonVisualizer(season, round)
+    SeasonCompletionVisualizer(season, round),
+    SeasonVisualizer(season, round),
+    LapTimeVisualizer(season, round)
 ]
 posts = [ visualizer.visualize() for visualizer in visualizers ]
+print(posts)
 
 if DEBUG_MODE:
-    print(posts)
     exit()
 
 tweeter = Tweeter()
