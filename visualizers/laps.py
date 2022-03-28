@@ -65,12 +65,17 @@ class LapTimeVisualizer(Visualizer):
         race_results_response = requests.get(race_results_url)
         race_results_dict = json.loads(race_results_response.text)
         results = race_results_dict['MRData']['RaceTable']['Races'][0]['Results']
-        num_laps = results[0]['laps']
+
         lap_table = []
 
         for result in results:
             driverId = result['Driver']['driverId']
-            grid_slot = result['grid']
+            grid_slot = int(result['grid'])
+            num_laps = int(result['laps'])
+            
+            if num_laps == 0:
+                break
+            
             lap_table.append({
                 'driverId': driverId,
                 'position': grid_slot,

@@ -28,7 +28,7 @@ class SeasonCompletionVisualizer(Visualizer):
 
 
     def tweet_text(self):
-        tweet_text = f"Following today's {self.name}, we are {float(self.round) / self.season_num_races:.0%} of the way though the {self.season} season."
+        tweet_text = f"Following today's {self.name}, we are {float(self.round) / self.season_num_races:.0%} of the way through the {self.season} season."
         if self.season_num_races - self.round != 0:
             tweet_text += f"\nThere are {self.season_num_races - self.round} races remaining."
         return tweet_text
@@ -60,7 +60,7 @@ class SeasonCompletionVisualizer(Visualizer):
         ax.set_xlim(long_lims)
         ax.set_ylim(lat_lims)
         ax.set_xlabel('')
-        ax.text(x=long_lims[0]+3, y=lat_lims[1]-8, s='How Did We Get Here?', fontsize=20, c=PASTEL_PRISMARINE)
+        ax.text(x=long_lims[0]+3, y=lat_lims[1]-4, s='How Did We Get Here?', fontsize=20, c=PASTEL_PRISMARINE)
         ax.get_legend().remove()
 
         fname = f"tweet_media/{self.season}_{self.round}_travel_map.png"

@@ -20,7 +20,7 @@ class SeasonVisualizer(Visualizer):
             self.tweet_image_wdc_standings()
         ]
         if self.round > 1:
-            image_paths.append(self.tweet_image_wdc_progression)
+            image_paths.append(self.tweet_image_wdc_progression())
         return {
             'text':text, 
             'image_paths':image_paths
@@ -74,7 +74,7 @@ class SeasonVisualizer(Visualizer):
             )
 
         ax.set_yticks([])
-        ax.set_title(f"Driver's Championship Points after {self.name}", figsize=16)
+        ax.set_title(f"Driver's Championship Points after {self.name}", fontsize=16)
 
         fname = f"tweet_media/{self.season}_{self.round}_wdc_standings.png"
         fig.savefig(fname, transparent=False, bbox_inches='tight')
@@ -97,7 +97,7 @@ class SeasonVisualizer(Visualizer):
         )
         for _,row in df[df['round'] == df['round'].max()].iterrows():
             ax.text(
-                x = 23, 
+                x = self.round * 1.05, 
                 y =  row['points_norm'], 
                 s=row['name'], 
                 fontsize=14
