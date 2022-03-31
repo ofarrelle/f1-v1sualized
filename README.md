@@ -1,5 +1,4 @@
 # F1 V1sualized
-A Twitter Bot posting visualizations for Formula 1 data
 
 If you're an F1 fan, interested in data visualiztion, or both, go follow the bot at https://twitter.com/F1_databot
 
