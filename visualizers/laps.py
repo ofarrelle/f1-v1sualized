@@ -19,7 +19,9 @@ class LapTimeVisualizer(Visualizer):
     def visualize(self):
         text = self.tweet_text()
         image_paths = [
-            self.tweet_image_lap_positions()
+            self.tweet_image_lap_positions(),
+            self.tweet_image_lap_times(),
+            self.tweet_image_time_gaps()
         ]
         return {
             'text':text, 
@@ -57,7 +59,73 @@ class LapTimeVisualizer(Visualizer):
         fig.savefig(fname, transparent=False, bbox_inches='tight')
         return fname
 
+    def tweet_image_lap_times(self):
+        max_lap = self.lap_table['lap'].max()
+        finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
+        top_drivers = finishers.iloc[0:2].to_list()
+        other_drivers = finishers.iloc[2:].sample(2).to_list()
+        sampled_drivers = top_drivers + other_drivers
+
+        lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}')
+        fastest_lap = lap_times['time'].min()
+        lap_times = lap_times.query(f'time < {1.1*fastest_lap}')
+        lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
+
+        fig, ax = plt.subplots(figsize=(12,6))
+        sns.lineplot(
+            data=lap_times,
+            x='lap', y='time', 
+            hue='familyName',
+            ax=ax
+        )
+        ax.set(
+            title='Lap Times (excluding pit stops, safety cars)',
+            xlabel='Lap', ylabel='Time (seconds)'
+        )
+        ax.get_legend().set_title('')
+
+        fname = f"tweet_media/{self.season}_{self.round}_lap_times.png"
+        fig.savefig(fname, transparent=False, bbox_inches='tight')
+        return fname
+
+    def tweet_image_time_gaps(self):
+        max_lap = self.lap_table['lap'].max()
+        finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
+        sampled_drivers = finishers.iloc[0:5].to_list()
+
+        lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}').copy()
+        # https://stackoverflow.com/questions/32847800/how-can-i-use-cumsum-within-a-group-in-pandas
+        lap_times['cum_time'] = lap_times.groupby('driverId')['time'].transform(pd.Series.cumsum)
+        
+        benchmark_driverId = self.benchmark_driver(sampled_drivers)
+        benchmark_familyName = self.drivers.query(f"driverId == '{benchmark_driverId}'")['familyName'].iloc[0]
+        benchmark_cum_times = lap_times.query(f"driverId == '{benchmark_driverId}'")[['lap','cum_time']]
+        benchmark_cum_times = benchmark_cum_times.rename(columns={'cum_time':'benchmark_cum_time'})
+        
+        lap_times = lap_times.merge(benchmark_cum_times, on='lap', how='inner')
+        lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
+        lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
+
+        fig, ax = plt.subplots(figsize=(12,6))
+        sns.lineplot(
+            data=lap_times,
+            x='lap', y='interval', 
+            hue='familyName',
+            ax=ax
+        )
+        ax.set(
+            title=f'Time Gaps (relative to {benchmark_familyName})',
+            xlabel='Lap', ylabel='Gap (seconds)'
+        )
+        ax.get_legend().set_title('')
+
+        fname = f"tweet_media/{self.season}_{self.round}_time_gaps.png"
+        fig.savefig(fname, transparent=False, bbox_inches='tight')
+        return fname
     
+    def benchmark_driver(self, sampled_drivers):
+        return sampled_drivers[2]
+
     def set_lap_table(self):
         race_results_url = "http://ergast.com/api/f1/{season}/{round}/results.json".format(
             season=self.season, round=self.round
