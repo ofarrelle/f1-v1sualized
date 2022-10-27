@@ -19,12 +19,13 @@ class SeasonCompletionVisualizer(Visualizer):
     def visualize(self):
         text = self.tweet_text()
         image_paths = []
-        if self.round > 1:
+        if self.round > 1 and (self.round % 3 == 0 or self.season_num_races == self.round):
             image_paths.append(self.tweet_image_world_map())
-        return {
-            'text':text, 
-            'image_paths':image_paths
-        }
+        # return {
+        #     'text':text, 
+        #     'image_paths':image_paths
+        # }
+        return image_paths
 
 
     def tweet_text(self):

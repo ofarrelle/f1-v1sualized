@@ -19,12 +19,13 @@ class SeasonVisualizer(Visualizer):
         image_paths = [
             self.tweet_image_wdc_standings()
         ]
-        if self.round > 1:
+        if self.round % 4 == 0:
             image_paths.append(self.tweet_image_wdc_progression())
-        return {
-            'text':text, 
-            'image_paths':image_paths
-        }
+        # return {
+        #     'text':text, 
+        #     'image_paths':image_paths
+        # }
+        return image_paths
 
 
     def tweet_text(self):

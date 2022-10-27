@@ -7,7 +7,7 @@ from visualizers.season import SeasonVisualizer
 from visualizers.season_completion import SeasonCompletionVisualizer
 from visualizers.laps import LapTimeVisualizer
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 db = tinydb.TinyDB('races_seen.json')
 
@@ -33,20 +33,29 @@ print('New race found!')
 if not DEBUG_MODE:
     db.insert({ 'season':season, 'round':round })
 
-visualizers = [
-    SeasonCompletionVisualizer(season, round),
-    SeasonVisualizer(season, round),
-    LapTimeVisualizer(season, round)
+visualizers = {
+    'season': SeasonVisualizer(season, round),
+    'laps': LapTimeVisualizer(season, round),
+    'season_completion': SeasonCompletionVisualizer(season, round)
+}
+visualizer_order = ['season', 'laps', 'season_completion']
+
+image_paths = [ 
+    image_path 
+    for visualizer_name in visualizer_order 
+    for image_path in visualizers[visualizer_name].visualize() 
 ]
-posts = [ visualizer.visualize() for visualizer in visualizers ]
-print(posts)
+print(image_paths)
 
 if DEBUG_MODE:
     exit()
 
 tweeter = Tweeter()
-for post in posts:
-    print(tweeter.tweet(post))
+post = {
+    'text': visualizers['season_completion'].tweet_text(), 
+    'image_paths': image_paths
+}
+print(tweeter.tweet(post))
     
 exit()
 

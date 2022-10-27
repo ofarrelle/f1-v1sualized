@@ -1,3 +1,4 @@
+from matplotlib import image
 import requests
 import json
 import pandas as pd
@@ -19,14 +20,15 @@ class LapTimeVisualizer(Visualizer):
     def visualize(self):
         text = self.tweet_text()
         image_paths = [
-            self.tweet_image_lap_positions(),
-            self.tweet_image_lap_times(),
-            self.tweet_image_time_gaps()
+            self.tweet_image_time_deltas()
         ]
-        return {
-            'text':text, 
-            'image_paths':image_paths
-        }
+        if self.round % 3 == 1:
+            image_paths.append(self.tweet_image_lap_times())
+        if self.round % 4 == 2:
+            image_paths.append(self.tweet_image_lap_positions())
+
+        image_paths = [x for x in image_paths if x!=""]
+        return image_paths
 
 
     def tweet_text(self):
@@ -35,6 +37,9 @@ class LapTimeVisualizer(Visualizer):
 
     def tweet_image_lap_positions(self):
         grid_positions = self.lap_table[self.lap_table['lap']==0].sort_values('position', ascending=True).reset_index(drop=True)
+        if grid_positions['position'].min() == 0:
+            return "" #empty filepath for handling by self.visualize()
+
         grid_positions =  grid_positions.merge(self.drivers, how='left', on='driverId')
 
         fig, ax = plt.subplots(figsize=(12,6))
@@ -88,7 +93,7 @@ class LapTimeVisualizer(Visualizer):
         fig.savefig(fname, transparent=False, bbox_inches='tight')
         return fname
 
-    def tweet_image_time_gaps(self):
+    def tweet_image_time_deltas(self):
         max_lap = self.lap_table['lap'].max()
         finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
         sampled_drivers = finishers.iloc[0:5].to_list()
@@ -114,12 +119,12 @@ class LapTimeVisualizer(Visualizer):
             ax=ax
         )
         ax.set(
-            title=f'Time Gaps (relative to {benchmark_familyName})',
-            xlabel='Lap', ylabel='Gap (seconds)'
+            title=f'Race Progression of the Top 5',
+            xlabel='Lap', ylabel=f'Gap relative to {benchmark_familyName}'
         )
         ax.get_legend().set_title('')
 
-        fname = f"tweet_media/{self.season}_{self.round}_time_gaps.png"
+        fname = f"tweet_media/{self.season}_{self.round}_time_deltas.png"
         fig.savefig(fname, transparent=False, bbox_inches='tight')
         return fname
     
