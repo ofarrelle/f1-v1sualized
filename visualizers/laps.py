@@ -20,13 +20,11 @@ class LapTimeVisualizer(Visualizer):
     def visualize(self):
         text = self.tweet_text()
         image_paths = [
-            self.tweet_image_time_deltas()
+            self.tweet_image_time_deltas(),
+            self.tweet_image_lap_positions(),
+            self.tweet_image_lap_times()
         ]
-        if self.round % 3 == 1:
-            image_paths.append(self.tweet_image_lap_times())
-        if self.round % 4 == 2:
-            image_paths.append(self.tweet_image_lap_positions())
-
+        
         image_paths = [x for x in image_paths if x!=""]
         return image_paths
 
@@ -37,9 +35,6 @@ class LapTimeVisualizer(Visualizer):
 
     def tweet_image_lap_positions(self):
         grid_positions = self.lap_table[self.lap_table['lap']==0].sort_values('position', ascending=True).reset_index(drop=True)
-        if grid_positions['position'].min() == 0:
-            return "" #empty filepath for handling by self.visualize()
-
         grid_positions =  grid_positions.merge(self.drivers, how='left', on='driverId')
 
         fig, ax = plt.subplots(figsize=(12,6))
@@ -151,7 +146,7 @@ class LapTimeVisualizer(Visualizer):
             
             lap_table.append({
                 'driverId': driverId,
-                'position': grid_slot,
+                'position': grid_slot if grid_slot != 0 else grid_slot + 20,
                 'time': 0.0,
                 'lap': 0
             })
