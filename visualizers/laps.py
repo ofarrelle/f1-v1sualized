@@ -146,7 +146,7 @@ class LapTimeVisualizer(Visualizer):
             
             lap_table.append({
                 'driverId': driverId,
-                'position': grid_slot if grid_slot != 0 else grid_slot + 20,
+                'position': grid_slot if grid_slot != 0 else grid_slot + 40,
                 'time': 0.0,
                 'lap': 0
             })
