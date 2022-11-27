@@ -1,8 +1,10 @@
 from matplotlib import image
 import requests
 import json
+import numpy as np
 import pandas as pd
 import time
+import random
 import matplotlib.pyplot as plt
 from mpl_prettify import *
 
@@ -18,11 +20,9 @@ class LapTimeVisualizer(Visualizer):
         self.drivers = self.set_driver_map()
     
     def visualize(self):
-        text = self.tweet_text()
         image_paths = [
             self.tweet_image_time_deltas(),
-            self.tweet_image_lap_positions(),
-            self.tweet_image_lap_times()
+            self.tweet_image_lap_positions()
         ]
         
         image_paths = [x for x in image_paths if x!=""]
@@ -68,7 +68,7 @@ class LapTimeVisualizer(Visualizer):
 
         lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}')
         fastest_lap = lap_times['time'].min()
-        lap_times = lap_times.query(f'time < {1.1*fastest_lap}')
+        lap_times = lap_times.query(f'time < {1.06*fastest_lap}')
         lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
 
         fig, ax = plt.subplots(figsize=(12,6))
@@ -91,16 +91,14 @@ class LapTimeVisualizer(Visualizer):
     def tweet_image_time_deltas(self):
         max_lap = self.lap_table['lap'].max()
         finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
-        sampled_drivers = finishers.iloc[0:5].to_list()
+        sampled_drivers = finishers.iloc[0:7].to_list()
 
         lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}').copy()
         # https://stackoverflow.com/questions/32847800/how-can-i-use-cumsum-within-a-group-in-pandas
         lap_times['cum_time'] = lap_times.groupby('driverId')['time'].transform(pd.Series.cumsum)
         
-        benchmark_driverId = self.benchmark_driver(sampled_drivers)
-        benchmark_familyName = self.drivers.query(f"driverId == '{benchmark_driverId}'")['familyName'].iloc[0]
-        benchmark_cum_times = lap_times.query(f"driverId == '{benchmark_driverId}'")[['lap','cum_time']]
-        benchmark_cum_times = benchmark_cum_times.rename(columns={'cum_time':'benchmark_cum_time'})
+        benchmark_cum_times = lap_times[lap_times['driverId'].isin(sampled_drivers)][['lap','time']].groupby(by='lap').median().cumsum().reset_index()
+        benchmark_cum_times = benchmark_cum_times.rename(columns={'time':'benchmark_cum_time'})
         
         lap_times = lap_times.merge(benchmark_cum_times, on='lap', how='inner')
         lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
@@ -115,7 +113,7 @@ class LapTimeVisualizer(Visualizer):
         )
         ax.set(
             title=f'Race Progression of the Top 5',
-            xlabel='Lap', ylabel=f'Gap relative to {benchmark_familyName}'
+            xlabel='Lap', ylabel=f''
         )
         ax.get_legend().set_title('')
 
@@ -135,6 +133,7 @@ class LapTimeVisualizer(Visualizer):
         results = race_results_dict['MRData']['RaceTable']['Races'][0]['Results']
 
         lap_table = []
+        grid_table = []
 
         for result in results:
             driverId = result['Driver']['driverId']
@@ -144,9 +143,9 @@ class LapTimeVisualizer(Visualizer):
             if num_laps == 0:
                 break
             
-            lap_table.append({
+            grid_table.append({
                 'driverId': driverId,
-                'position': grid_slot if grid_slot != 0 else grid_slot + 40,
+                'position': grid_slot,
                 'time': 0.0,
                 'lap': 0
             })
@@ -169,6 +168,16 @@ class LapTimeVisualizer(Visualizer):
                     'lap': lap_num
                 })
         
+        # deal with pit lane starters in grid table
+        max_grid_used = max([x['position'] for x in grid_table])
+        pit_lane_starters_seen = 0
+        # uniqueify and rebalance pit lane grid indices
+        for x in grid_table:
+            if x['position'] == 0:
+                pit_lane_starters_seen += 1
+                x['position'] = max_grid_used + pit_lane_starters_seen                        
+            lap_table.append(x)
+
         lap_df = pd.DataFrame(lap_table)
         lap_df['time'] = lap_df['time'].apply(stopwatchToSeconds)
         lap_df['position'] = lap_df['position'].astype('int')

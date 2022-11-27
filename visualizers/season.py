@@ -15,16 +15,12 @@ class SeasonVisualizer(Visualizer):
         self.points_table = self.set_season_points_table()
     
     def visualize(self):
-        text = self.tweet_text()
         image_paths = [
             self.tweet_image_wdc_standings()
         ]
         if self.round % 4 == 0:
             image_paths.append(self.tweet_image_wdc_progression())
-        # return {
-        #     'text':text, 
-        #     'image_paths':image_paths
-        # }
+
         return image_paths
 
 

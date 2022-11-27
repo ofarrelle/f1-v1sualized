@@ -17,19 +17,15 @@ class SeasonCompletionVisualizer(Visualizer):
         
 
     def visualize(self):
-        text = self.tweet_text()
         image_paths = []
         if self.round > 1 and (self.round % 3 == 0 or self.season_num_races == self.round):
             image_paths.append(self.tweet_image_world_map())
-        # return {
-        #     'text':text, 
-        #     'image_paths':image_paths
-        # }
+
         return image_paths
 
 
     def tweet_text(self):
-        tweet_text = f"Following today's {self.name}, we are {float(self.round) / self.season_num_races:.0%} of the way through the {self.season} season."
+        tweet_text = f"Following the {self.name}, we are {float(self.round) / self.season_num_races:.0%} of the way through the {self.season} season."
         if self.season_num_races - self.round != 0:
             tweet_text += f"\nThere are {self.season_num_races - self.round} races remaining."
         return tweet_text
