@@ -7,6 +7,7 @@ class UI:
         self.debug_mode = True
         self.season = tk.StringVar(self.root, value='current')
         self.race = tk.StringVar(self.root, value='last')
+        self.highlighted_finisher = tk.IntVar(self.root, value=1)
         self.tweet_text_replacement = ""
 
     def set_options(self, debug_mode, tweet_text_replacement):
@@ -15,7 +16,7 @@ class UI:
         self.tweet_text_replacement = tweet_text_replacement.strip()
 
     def launch_ui(self):
-        self.root.geometry("600x180")
+        self.root.geometry("600x240")
         self.root.title('Options')
         self.root.resizable(True, True)
 
@@ -33,23 +34,28 @@ class UI:
         race_entry = ttk.Entry(self.root, textvariable=self.race)
         race_entry.grid(column=1, row=1, sticky=tk.E, padx=5, pady=5)
 
+        highlighted_finisher_label = ttk.Label(self.root, text="Highlighted Finisher:")
+        highlighted_finisher_label.grid(column=0, row=2, sticky=tk.W, padx=5, pady=5)
+        highlighted_finisher_entry = ttk.Entry(self.root, textvariable=self.highlighted_finisher)
+        highlighted_finisher_entry.grid(column=1, row=2, sticky=tk.E, padx=5, pady=5)
+
         tweet_text_label = ttk.Label(self.root, text="Tweet Text:")
-        tweet_text_label.grid(column=0, row=2, sticky=tk.NW, padx=5, pady=5)
-        tweet_text_entry = tk.Text(self.root, height=4, width=65, )
-        tweet_text_entry.grid(column=1, row=2, sticky=tk.E, padx=5, pady=5)
+        tweet_text_label.grid(column=0, row=3, sticky=tk.NW, padx=5, pady=5)
+        tweet_text_entry = tk.Text(self.root, height=4, width=52)
+        tweet_text_entry.grid(column=1, row=3, sticky=tk.E, padx=5, pady=5)
 
         debug_button = ttk.Button(
             self.root, 
             text='Debug', 
             command=lambda: self.set_options(True, tweet_text_entry.get(1.0, tk.END))
         )
-        debug_button.grid(column=0, row=3, sticky=tk.E, padx=5, pady=5)
+        debug_button.grid(column=0, row=4, sticky=tk.E, padx=5, pady=5)
 
         publish_button = ttk.Button(
             self.root, 
             text='Publish Results', 
             command=lambda: self.set_options(False, tweet_text_entry.get(1.0, tk.END))
         )
-        publish_button.grid(column=1, row=3, sticky=tk.E, padx=5, pady=5)
+        publish_button.grid(column=1, row=4, sticky=tk.E, padx=5, pady=5)
 
         self.root.mainloop()

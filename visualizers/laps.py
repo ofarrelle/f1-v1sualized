@@ -14,10 +14,11 @@ class LapTimeVisualizer(Visualizer):
     lap_table = None
     drivers = None
 
-    def __init__(self, season, round):
+    def __init__(self, season, round, highlighted_finisher=1):
         super().__init__(season, round)
         self.lap_table = self.set_lap_table()
         self.drivers = self.set_driver_map()
+        self.highlighted_finisher = highlighted_finisher
     
     def visualize(self):
         image_paths = [
@@ -92,6 +93,7 @@ class LapTimeVisualizer(Visualizer):
         max_lap = self.lap_table['lap'].max()
         finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
         sampled_drivers = finishers.iloc[0:7].to_list()
+        highlighted_driver = finishers.iloc[self.highlighted_finisher - 1]
 
         lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}').copy()
         # https://stackoverflow.com/questions/32847800/how-can-i-use-cumsum-within-a-group-in-pandas
@@ -104,18 +106,22 @@ class LapTimeVisualizer(Visualizer):
         lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
         lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
 
+        lap_times['line_thickness'] = lap_times['driverId'].apply(lambda x: 3 if x==highlighted_driver else 1)
         fig, ax = plt.subplots(figsize=(12,6))
         sns.lineplot(
             data=lap_times,
             x='lap', y='interval', 
             hue='familyName',
+            size = 'line_thickness',
             ax=ax
         )
         ax.set(
-            title=f'Race Progression of the Top 5',
+            title=f'Race Progression of the top {len(sampled_drivers)}',
             xlabel='Lap', ylabel=f''
         )
-        ax.get_legend().set_title('')
+        
+        sampled_drivers_family_names = self.drivers.set_index('driverId').loc[sampled_drivers, 'familyName'].to_list()
+        ax.legend(sampled_drivers_family_names)
 
         fname = f"tweet_media/{self.season}_{self.round}_time_deltas.png"
         fig.savefig(fname, transparent=False, bbox_inches='tight')

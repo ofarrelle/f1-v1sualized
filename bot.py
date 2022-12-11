@@ -9,7 +9,7 @@ from visualizers.season_completion import SeasonCompletionVisualizer
 from visualizers.laps import LapTimeVisualizer
 
 
-def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT):
+def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTED_FINISHER):
     searched_race_results_url = "http://ergast.com/api/f1/{season}/{race}/results.json".format(season=URL_SEASON, race=URL_RACE)
     searched_race_results_response = requests.get(searched_race_results_url)
     searched_race_results = json.loads(searched_race_results_response.text)
@@ -36,7 +36,7 @@ def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT):
 
     visualizers = {
         'season': SeasonVisualizer(season, round),
-        'laps': LapTimeVisualizer(season, round),
+        'laps': LapTimeVisualizer(season, round, HIGHLIGHTED_FINISHER),
         'season_completion': SeasonCompletionVisualizer(season, round)
     }
     visualizer_order = ['season', 'laps', 'season_completion']
@@ -68,5 +68,6 @@ if __name__ == "__main__":
     URL_SEASON = ui.season.get()
     URL_RACE = ui.race.get()
     TWEET_TEXT_REPLACEMENT = ui.tweet_text_replacement
+    HIGHLIGHTED_FINISHER = ui.highlighted_finisher.get()
 
-    run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT)
+    run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTED_FINISHER)
