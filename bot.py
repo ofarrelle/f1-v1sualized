@@ -70,4 +70,10 @@ if __name__ == "__main__":
     TWEET_TEXT_REPLACEMENT = ui.tweet_text_replacement
     HIGHLIGHTED_FINISHER = ui.highlighted_finisher.get()
 
+    print("Run Options:")
+    print("  - DEBUG_MODE:", DEBUG_MODE)
+    print("  - URL_SEASON:", URL_SEASON)
+    print("  - URL_RACE:", URL_RACE)
+    print("  - TWEET_TEXT_REPLACEMENT:", TWEET_TEXT_REPLACEMENT)
+    print("  - HIGHLIGHTED_FINISHER:", HIGHLIGHTED_FINISHER)
     run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTED_FINISHER)
