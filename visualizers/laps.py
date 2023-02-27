@@ -18,7 +18,8 @@ class LapTimeVisualizer(Visualizer):
         super().__init__(season, round)
         self.lap_table = self.set_lap_table()
         self.drivers = self.set_driver_map()
-        self.highlighted_finisher = highlighted_finisher
+        self.highlighted_driver = self.set_highlighted_driver(highlighted_finisher)
+        self.num_finishers_to_display = max(6, highlighted_finisher)
     
     def visualize(self):
         image_paths = [
@@ -61,8 +62,9 @@ class LapTimeVisualizer(Visualizer):
         return fname
 
     def tweet_image_lap_times(self):
-        max_lap = self.lap_table['lap'].max()
-        finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
+        final_lap_data_by_driver = self.get_final_lap_data()
+        finishers = final_lap_data_by_driver.sort_values('position')['driverId']
+    
         top_drivers = finishers.iloc[0:2].to_list()
         other_drivers = finishers.iloc[2:].sample(2).to_list()
         sampled_drivers = top_drivers + other_drivers
@@ -90,10 +92,9 @@ class LapTimeVisualizer(Visualizer):
         return fname
 
     def tweet_image_time_deltas(self):
-        max_lap = self.lap_table['lap'].max()
-        finishers = self.lap_table.query(f'lap == {max_lap}')['driverId']
-        sampled_drivers = finishers.iloc[0:7].to_list()
-        highlighted_driver = finishers.iloc[self.highlighted_finisher - 1]
+        final_lap_data_by_driver = self.get_final_lap_data()
+        finishers = final_lap_data_by_driver.sort_values('position')['driverId']
+        sampled_drivers = finishers.iloc[0:self.num_finishers_to_display].to_list()
 
         lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}').copy()
         # https://stackoverflow.com/questions/32847800/how-can-i-use-cumsum-within-a-group-in-pandas
@@ -106,7 +107,9 @@ class LapTimeVisualizer(Visualizer):
         lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
         lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
 
-        lap_times['line_thickness'] = lap_times['driverId'].apply(lambda x: 3 if x==highlighted_driver else 1)
+        lap_times['line_thickness'] = lap_times['driverId'].apply(
+            lambda x: 4 if x==self.highlighted_driver else 2
+        )
         fig, ax = plt.subplots(figsize=(12,6))
         sns.lineplot(
             data=lap_times,
@@ -117,7 +120,7 @@ class LapTimeVisualizer(Visualizer):
         )
         ax.set(
             title=f'Race Progression of the top {len(sampled_drivers)}',
-            xlabel='Lap', ylabel=f''
+            xlabel='Lap', ylabel='Seconds Ahead/Behind'
         )
         
         sampled_drivers_family_names = self.drivers.set_index('driverId').loc[sampled_drivers, 'familyName'].to_list()
@@ -198,6 +201,15 @@ class LapTimeVisualizer(Visualizer):
         drivers_dict = json.loads(drivers_response.text)
         drivers = drivers_dict['MRData']['DriverTable']['Drivers']
         return pd.DataFrame(drivers)[['driverId','familyName','code']].copy()
+
+    def get_final_lap_data(self):
+        max_lap_by_driver = self.lap_table.groupby('driverId')['lap'].max().reset_index()
+        final_lap_data_by_driver = max_lap_by_driver.merge(self.lap_table, how="inner", on=['driverId','lap'])
+        return final_lap_data_by_driver
+    
+    def set_highlighted_driver(self, finish_pos):
+        final_lap_data_by_driver = self.get_final_lap_data()
+        return final_lap_data_by_driver.query(f'position == {finish_pos}')['driverId'].iloc[0]
 
 
 def stopwatchToSeconds(s):
