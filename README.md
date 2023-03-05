@@ -12,6 +12,8 @@ A Twitter bot posting data visualizations after every race, including
 
 Message me on Twitter or send a pull request with suggestions! Currently still working on new features and reliability before I deploy to a server.
 
+Powered by [Ergast](http://ergast.com/mrd/)
+
 ## Development
 
 1. Clone and install python packages (will work on a package requirements list in the future). 
