@@ -1,10 +1,9 @@
 from matplotlib import image
+import time as pytime
 import requests
 import json
 import numpy as np
 import pandas as pd
-import time
-import random
 import matplotlib.pyplot as plt
 from mpl_prettify import *
 
@@ -19,7 +18,7 @@ class LapTimeVisualizer(Visualizer):
         self.lap_table = self.set_lap_table()
         self.drivers = self.set_driver_map()
         self.highlighted_driver = self.set_highlighted_driver(highlighted_finisher)
-        self.num_finishers_to_display = max(6, highlighted_finisher)
+        self.num_finishers_to_display = max(7, highlighted_finisher)
     
     def visualize(self):
         image_paths = [
@@ -36,20 +35,32 @@ class LapTimeVisualizer(Visualizer):
         return tweet_text
 
     def tweet_image_lap_positions(self):
-        grid_positions = self.lap_table[self.lap_table['lap']==0].sort_values('position', ascending=True).reset_index(drop=True)
-        grid_positions =  grid_positions.merge(self.drivers, how='left', on='driverId')
+        grid_positions = self.lap_table.query('lap == 0').sort_values('position', ascending=True).reset_index(drop=True)
+        grid_positions = grid_positions.merge(self.drivers, how='left', on='driverId')
+        
+        driver_line_styles = grid_positions[['driverId', 'position']].copy()
+        driver_line_styles['line_type'] = driver_line_styles['position'].apply(
+            lambda p: 0 if p%2 == 0 else 1
+        )
+        driver_line_styles['line_thickness'] = driver_line_styles['position'].apply(
+            lambda p: 4 if p%4 in (0,1) else 3
+        )
+        driver_line_styles = driver_line_styles.drop('position', axis=1)
+
+        lap_positions = self.lap_table.merge(driver_line_styles, how='left', on='driverId')
 
         fig, ax = plt.subplots(figsize=(12,6))
         sns.lineplot(
-            data=self.lap_table,
+            data=lap_positions,
             x='lap', y='inverse_position', 
-            hue='driverId', style='name_hash',
+            hue='driverId', 
+            style='line_type', size='line_thickness',
             ax=ax
         )
 
         for index,row in grid_positions.iterrows():
             ax.text(x = -3, y = -0.2 - (index+1), s = row.code, fontsize=12)
-            ax.text(x = 1+self.lap_table['lap'].max(), y = -0.2 - (index+1), s = index+1, fontsize=12)
+            ax.text(x = 1+lap_positions['lap'].max(), y = -0.2 - (index+1), s = index+1, fontsize=12)
 
         ax.tick_params(axis='x', which='both', labelbottom=False)
         ax.tick_params(axis='y', which='both', labelleft=False)
@@ -100,15 +111,18 @@ class LapTimeVisualizer(Visualizer):
         # https://stackoverflow.com/questions/32847800/how-can-i-use-cumsum-within-a-group-in-pandas
         lap_times['cum_time'] = lap_times.groupby('driverId')['time'].transform(pd.Series.cumsum)
         
-        benchmark_cum_times = lap_times[lap_times['driverId'].isin(sampled_drivers)][['lap','time']].groupby(by='lap').median().cumsum().reset_index()
+        benchmark_lap_times = lap_times[lap_times['driverId'].isin(sampled_drivers)][['lap','time']].groupby(by='lap').median()
+        benchmark_lap_times += 1 # slow down benchmark for plotting
+        benchmark_cum_times = benchmark_lap_times.cumsum().reset_index()
         benchmark_cum_times = benchmark_cum_times.rename(columns={'time':'benchmark_cum_time'})
+        benchmark_cum_times['benchmark_cum_time'] = benchmark_cum_times['benchmark_cum_time'] + 0.5
         
         lap_times = lap_times.merge(benchmark_cum_times, on='lap', how='inner')
         lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
         lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
 
         lap_times['line_thickness'] = lap_times['driverId'].apply(
-            lambda x: 4 if x==self.highlighted_driver else 2
+            lambda x: 4 if x==self.highlighted_driver else 3
         )
         fig, ax = plt.subplots(figsize=(12,6))
         sns.lineplot(
@@ -145,6 +159,8 @@ class LapTimeVisualizer(Visualizer):
         grid_table = []
 
         for result in results:
+            pytime.sleep(0.5)
+
             driverId = result['Driver']['driverId']
             grid_slot = int(result['grid'])
             num_laps = int(result['laps'])
@@ -191,7 +207,6 @@ class LapTimeVisualizer(Visualizer):
         lap_df['time'] = lap_df['time'].apply(stopwatchToSeconds)
         lap_df['position'] = lap_df['position'].astype('int')
         lap_df['inverse_position'] = -1 * lap_df['position']
-        lap_df['name_hash'] = lap_df['driverId'].apply(lambda n: hash(n) % 2)
         return lap_df.copy()
 
 
@@ -200,7 +215,8 @@ class LapTimeVisualizer(Visualizer):
         drivers_response = requests.get(drivers_url)
         drivers_dict = json.loads(drivers_response.text)
         drivers = drivers_dict['MRData']['DriverTable']['Drivers']
-        return pd.DataFrame(drivers)[['driverId','familyName','code']].copy()
+        drivers_df = pd.DataFrame(drivers)[['driverId','familyName','code']]
+        return drivers_df.copy()
 
     def get_final_lap_data(self):
         max_lap_by_driver = self.lap_table.groupby('driverId')['lap'].max().reset_index()
