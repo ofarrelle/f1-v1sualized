@@ -34,12 +34,16 @@ def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTE
     if not DEBUG_MODE:
         db.insert({ 'season':season, 'round':round })
 
+    visualizer_order = [
+        'season', 
+        'laps', 
+        'season_completion'
+    ]
     visualizers = {
-        'season': SeasonVisualizer(season, round),
-        'laps': LapTimeVisualizer(season, round, HIGHLIGHTED_FINISHER),
-        'season_completion': SeasonCompletionVisualizer(season, round)
+        'season': SeasonVisualizer(season, round) if 'season' in visualizer_order else None,
+        'laps': LapTimeVisualizer(season, round, HIGHLIGHTED_FINISHER) if 'laps' in visualizer_order else None,
+        'season_completion': SeasonCompletionVisualizer(season, round) if 'season_completion' in visualizer_order else None
     }
-    visualizer_order = ['season', 'laps', 'season_completion']
 
     image_paths = [ 
         image_path 

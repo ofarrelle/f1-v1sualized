@@ -15,15 +15,17 @@ class LapTimeVisualizer(Visualizer):
 
     def __init__(self, season, round, highlighted_finisher=1):
         super().__init__(season, round)
+        self.highlighted_finisher = highlighted_finisher
         self.lap_table = self.set_lap_table()
         self.drivers = self.set_driver_map()
-        self.highlighted_driver = self.set_highlighted_driver(highlighted_finisher)
-        self.num_finishers_to_display = max(7, highlighted_finisher)
+        self.highlighted_driver = self.set_highlighted_driver(self.highlighted_finisher)
+        self.num_finishers_to_display = max(7, self.highlighted_finisher)
     
     def visualize(self):
         image_paths = [
             self.tweet_image_time_deltas(),
-            self.tweet_image_lap_positions()
+            self.tweet_image_lap_positions(),
+            # self.tweet_image_lap_times()
         ]
         
         image_paths = [x for x in image_paths if x!=""]
@@ -82,6 +84,7 @@ class LapTimeVisualizer(Visualizer):
 
         lap_times = self.lap_table.query(f'lap != 0 & driverId in {sampled_drivers}')
         fastest_lap = lap_times['time'].min()
+        # TODO smarter way to identify safety car laps
         lap_times = lap_times.query(f'time < {1.06*fastest_lap}')
         lap_times = lap_times.merge(self.drivers, how='inner', on='driverId')
 
@@ -112,10 +115,11 @@ class LapTimeVisualizer(Visualizer):
         lap_times['cum_time'] = lap_times.groupby('driverId')['time'].transform(pd.Series.cumsum)
         
         benchmark_lap_times = lap_times[lap_times['driverId'].isin(sampled_drivers)][['lap','time']].groupby(by='lap').median()
-        benchmark_lap_times += 1 # slow down benchmark for plotting
+        # TODO algorithmically define this
+        benchmark_lap_times += 0 # slow down benchmark for plotting
         benchmark_cum_times = benchmark_lap_times.cumsum().reset_index()
         benchmark_cum_times = benchmark_cum_times.rename(columns={'time':'benchmark_cum_time'})
-        benchmark_cum_times['benchmark_cum_time'] = benchmark_cum_times['benchmark_cum_time'] + 0.5
+        benchmark_cum_times['benchmark_cum_time'] = benchmark_cum_times['benchmark_cum_time']
         
         lap_times = lap_times.merge(benchmark_cum_times, on='lap', how='inner')
         lap_times['interval'] = lap_times['benchmark_cum_time'] - lap_times['cum_time']
@@ -138,7 +142,12 @@ class LapTimeVisualizer(Visualizer):
         )
         
         sampled_drivers_family_names = self.drivers.set_index('driverId').loc[sampled_drivers, 'familyName'].to_list()
-        ax.legend(sampled_drivers_family_names)
+        handles, labels = ax.get_legend_handles_labels()
+        relevant_indices = [i for i,label in enumerate(labels) if label in sampled_drivers_family_names]
+        handles = np.array(handles)[relevant_indices].tolist()
+        labels = np.array(labels)[relevant_indices].tolist()
+        handles[self.highlighted_finisher - 1]._linewidth = 3.0
+        ax.legend(handles, labels)
 
         fname = f"tweet_media/{self.season}_{self.round}_time_deltas.png"
         fig.savefig(fname, transparent=False, bbox_inches='tight')
