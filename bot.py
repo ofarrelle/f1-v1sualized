@@ -31,8 +31,6 @@ def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTE
         return
 
     print('New race found!')
-    if not DEBUG_MODE:
-        db.insert({ 'season':season, 'round':round })
 
     visualizer_order = [
         'season', 
@@ -62,6 +60,9 @@ def run_app(DEBUG_MODE, URL_SEASON, URL_RACE, TWEET_TEXT_REPLACEMENT, HIGHLIGHTE
         'image_paths': image_paths
     }
     print(tweeter.tweet(post, season, gp_name)) 
+
+    if not DEBUG_MODE:
+        db.insert({ 'season':season, 'round':round })
     return
 
 if __name__ == "__main__":
